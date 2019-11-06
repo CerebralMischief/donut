@@ -56,6 +56,7 @@
 #define DONUT_ERROR_DLL_PARAM          14
 #define DONUT_ERROR_BYPASS_INVALID     15
 #define DONUT_ERROR_NORELOC            16
+#define DONUT_ERROR_INVALID_ENCODING   17
 
 // target architecture
 #define DONUT_ARCH_ANY                 -1  // just for vbs,js and xsl files
@@ -70,7 +71,16 @@
 #define DONUT_MODULE_EXE                4  // Unmanaged EXE
 #define DONUT_MODULE_VBS                5  // VBScript
 #define DONUT_MODULE_JS                 6  // JavaScript or JScript
-#define DONUT_MODULE_XSL                7  // XSL with JavaScript/JScript or VBscript embedded
+
+// encoding type
+#define DONUT_ENCODE_RAW                1
+#define DONUT_ENCODE_BASE64             2
+#define DONUT_ENCODE_RUBY               3
+#define DONUT_ENCODE_C                  4
+#define DONUT_ENCODE_PYTHON             5
+#define DONUT_ENCODE_POWERSHELL         6
+#define DONUT_ENCODE_CSHARP             7
+#define DONUT_ENCODE_HEX                8
 
 // instance type
 #define DONUT_INSTANCE_PIC              1  // Self-contained
@@ -81,9 +91,6 @@
 #define DONUT_BYPASS_ABORT              2  // If bypassing AMSI/WLDP fails, the loader stops running
 #define DONUT_BYPASS_CONTINUE           3  // If bypassing AMSI/WLDP fails, the loader continues running
 
-// apparently C# can support 2^16 or 65,536 parameters
-// we support up to eight for now :)
-#define DONUT_MAX_PARAM     8        // maximum number of parameters passed to method
 #define DONUT_MAX_NAME    256        // maximum length of string for domain, class, method and parameter names
 #define DONUT_MAX_DLL       8        // maximum number of DLL supported by instance
 #define DONUT_MAX_URL     256
@@ -93,27 +100,33 @@
 #define DONUT_DOMAIN_LEN    8
     
 typedef struct _DONUT_CONFIG {
-    int      arch;                    // target architecture for shellcode   
-    int      bypass;                  // bypass option for AMSI/WDLP
-    char     domain[DONUT_MAX_NAME];  // name of domain to create for assembly
-    char     cls[DONUT_MAX_NAME];     // name of class and optional namespace
-    char     method[DONUT_MAX_NAME];  // name of method to execute
-    char     param[(DONUT_MAX_PARAM+1)*DONUT_MAX_NAME]; // string parameters passed to method, separated by comma or semi-colon
-    char     file[DONUT_MAX_NAME];    // assembly to create module from   
-    char     url[DONUT_MAX_URL];      // points to root path of where module will be on remote http server
-    char     runtime[DONUT_MAX_NAME]; // runtime version to use.
-    char     modname[DONUT_MAX_NAME]; // name of module written to disk
+    int             arch;                     // target architecture for shellcode
+    int             bypass;                   // bypass option for AMSI/WDLP
+    int             compress;                 // compress file
+    int             encoding;                 // encoding format
+    int             thread;                   // run entrypoint of unmanaged EXE as a thread
+    int             exit;                     // call RtlExitUserProcess to terminate the host process
+    char            output[DONUT_MAX_NAME];   // name of output file to save shellcode
+    char            domain[DONUT_MAX_NAME];   // name of domain to create for assembly
+    char            cls[DONUT_MAX_NAME];      // name of class and optional namespace
+    char            method[DONUT_MAX_NAME];   // name of method to execute
+    int             ansi;                     // don't convert command line to unicode
+    char            param[DONUT_MAX_NAME];    // command line to use.
+    char            file[DONUT_MAX_NAME];     // assembly to create module from   
+    char            url[DONUT_MAX_URL];       // points to root path of where module will be on remote http server
+    char            runtime[DONUT_MAX_NAME];  // runtime version to use.
+    char            modname[DONUT_MAX_NAME];  // name of module written to disk
     
-    int      mod_type;                // .NET EXE/DLL, VBS,JS,EXE,DLL,XSL
-    uint64_t mod_len;                 // size of DONUT_MODULE
-    void     *mod;                    // points to donut module
+    int             mod_type;                 // DONUT_MODULE_DLL or DONUT_MODULE_EXE
+    uint64_t        mod_len;                  // size of DONUT_MODULE
+    PDONUT_MODULE   mod;                      // points to donut module
+     
+    int             inst_type;                // DONUT_INSTANCE_PIC or DONUT_INSTANCE_URL
+    uint64_t        inst_len;                 // size of DONUT_INSTANCE
+    PDONUT_INSTANCE inst;                     // points to donut instance
     
-    int      inst_type;               // DONUT_INSTANCE_PIC or DONUT_INSTANCE_URL
-    uint64_t inst_len;                // size of DONUT_INSTANCE
-    void     *inst;                   // points to donut instance
-    
-    uint64_t pic_len;                 // size of shellcode
-    void     *pic;                    // points to PIC/shellcode
+    uint64_t        pic_len;                  // size of shellcode
+    void*           pic;                      // points to PIC/shellcode
 } DONUT_CONFIG, *PDONUT_CONFIG;
 
 #ifdef __cplusplus
